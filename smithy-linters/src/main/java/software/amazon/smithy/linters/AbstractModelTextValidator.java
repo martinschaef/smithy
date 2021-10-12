@@ -37,7 +37,7 @@ import software.amazon.smithy.model.validation.AbstractValidator;
 import software.amazon.smithy.model.validation.ValidationEvent;
 
 /**
- * <p>Validates that all shape names, and values do not contain non-inclusive words.
+ * <p>Base class for any validator that wants to perform a full text search on a Model.
  *
  * <p>Does a full scan of the model and gathers all text along with location data
  * and uses a generic function to decide what to do with each text occurrence. The
@@ -49,6 +49,15 @@ import software.amazon.smithy.model.validation.ValidationEvent;
 public abstract class AbstractModelTextValidator extends AbstractValidator {
     private static final Map<Model, List<TextOccurrence>> MODEL_TO_TEXT_MAP = new ConcurrentHashMap<>();
 
+    /**
+     * Sub-classes must implement this method to take the following responsibilities:
+     *
+     * 1) Decide if the text occurrence is
+     * 2)
+     *
+     * @param occurrence
+     * @param validationEventConsumer
+     */
     protected abstract void getValidationEvents(TextOccurrence occurrence,
                                                 Consumer<ValidationEvent> validationEventConsumer);
 

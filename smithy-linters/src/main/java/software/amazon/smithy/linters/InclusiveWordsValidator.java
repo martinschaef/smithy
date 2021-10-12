@@ -15,84 +15,121 @@
 
 package software.amazon.smithy.linters;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import software.amazon.smithy.model.node.NodeMapper;
 import software.amazon.smithy.model.traits.Trait;
 import software.amazon.smithy.model.validation.ValidationEvent;
 import software.amazon.smithy.model.validation.ValidatorService;
 
 /**
  * <p>Validates that all shape names, and values do not contain non-inclusive words.
- *
- * <p>Does a full scan of the model and gathers all text along with location data
- * and uses a generic function to decide what to do with each text occurrence. The
- * full text search traversal has no knowledge of what it is looking for and descends
- * fully into the structure of all traits.
- *
- * <p>Prelude shape definitions are not examined, however all values
+ * *
+ * <p>See AbstractModelTextValidator for scan implementation details details
  */
-public class InclusiveWordsValidator extends AbstractModelTextValidator {
-    /** Emitted when a model contains a non-inclusive term. */
-    static final Set<String> NONINCLUSIVE_TERMS = new HashSet<>(Arrays.asList(
-            "master",
-            "slave",
-            "blacklist",
-            "whitelist"
-    ));
+public final class InclusiveWordsValidator extends AbstractModelTextValidator {
+    static final Map<String, List<String>> BUILT_IN_NONINCLUSIVE_TERMS = new HashMap<String, List<String>>() {
+        {
+            put("master", List.of("primary", "parent"));
+            put("slave", List.of("secondary", "replica", "clone", "child"));
+            put("blacklist", List.of("disallowlist"));
+            put("whitelist", List.of("allowlist"));
+        }};
 
     public static final class Provider extends ValidatorService.Provider {
         public Provider() {
-            super(InclusiveWordsValidator.class, InclusiveWordsValidator::new);
+            super(InclusiveWordsValidator.class, node -> {
+                NodeMapper mapper = new NodeMapper();
+                return new InclusiveWordsValidator(mapper.deserialize(node, InclusiveWordsValidator.Config.class));
+            });
         }
+    }
+
+    /**
+     * InclusiveWordsValidator validator configuration.
+     */
+    public static final class Config {
+        private Map<String, List<String>> appendNonInclusiveWords = Collections.emptyMap();
+        private Map<String, List<String>> overrideNonInclusiveWords = Collections.emptyMap();
+
+        public Map<String, List<String>> getAppendNonInclusiveWords() {
+            return appendNonInclusiveWords;
+        }
+
+        public Map<String, List<String>> getOverrideNonInclusiveWords() {
+            return overrideNonInclusiveWords;
+        }
+
+        public void setAppendNonInclusiveWords(Map<String, List<String>> words) {
+            this.appendNonInclusiveWords = words;
+        }
+
+        public void setOverrideNonInclusiveWords(Map<String, List<String>> words) {
+            this.overrideNonInclusiveWords = words;
+        }
+    }
+
+    final Map<String, List<String>> termsMap;
+
+    private InclusiveWordsValidator(Config config) {
+        termsMap = config.getOverrideNonInclusiveWords() == null || config.getOverrideNonInclusiveWords().isEmpty()
+                ? new HashMap<>(BUILT_IN_NONINCLUSIVE_TERMS)
+                : new HashMap<>(config.getOverrideNonInclusiveWords());
+
+        if (config.getAppendNonInclusiveWords() != null) {
+            for (Map.Entry<String, List<String>> termEntry:config.getAppendNonInclusiveWords().entrySet()) {
+                termsMap.putIfAbsent(termEntry.getKey(), termEntry.getValue());
+            }
+        }
+
+        System.out.printf("Non inclusive terms (keys) found: %s%n",
+                termsMap.keySet().stream().collect(Collectors.joining(", ")));
     }
 
     @Override
     protected void getValidationEvents(TextOccurrence occurrence,
                                        Consumer<ValidationEvent> validationEventConsumer) {
-        List<String> words = new ArrayList<>();
-        for (String term:NONINCLUSIVE_TERMS) {
+        for (Map.Entry<String, List<String>> termEntry: termsMap.entrySet()) {
             //lower casing the term will be more necessary when the terms are from config
-            if (occurrence.text.toLowerCase().contains(term.toLowerCase())) {
-                words.add(term);
-            }
-        }
-
-        if (!words.isEmpty()) {
-            if (occurrence.trait.isPresent()) {
-                validationEventConsumer.accept(warning(occurrence.shape, occurrence.trait.get().getSourceLocation(),
-                        formatInclusiveWordsValidationMessage(words, occurrence)));
-            } else {
-                validationEventConsumer.accept(warning(occurrence.shape, occurrence.shape.getSourceLocation(),
-                        formatInclusiveWordsValidationMessage(words, occurrence)));
+            if (occurrence.text.toLowerCase().contains(termEntry.getKey().toLowerCase())) {
+                if (occurrence.trait.isPresent()) {
+                    validationEventConsumer.accept(warning(occurrence.shape, occurrence.trait.get().getSourceLocation(),
+                            formatNonInclusiveWordsValidationMessage(termEntry, occurrence)));
+                } else {
+                    validationEventConsumer.accept(warning(occurrence.shape, occurrence.shape.getSourceLocation(),
+                            formatNonInclusiveWordsValidationMessage(termEntry, occurrence)));
+                }
             }
         }
     }
 
-    private static String formatInclusiveWordsValidationMessage(Collection<String> terms, TextOccurrence occurrence) {
-        String words = terms.size() > 1
-                ? String.format("words {%s}", terms.stream().collect(Collectors.joining(", ")))
-                : String.format("word {%s}", terms.stream().findFirst().get());
+    private static String formatNonInclusiveWordsValidationMessage(Map.Entry<String, List<String>> termEntry,
+                                                                   TextOccurrence occurrence) {
+        String replacementAddendum = termEntry.getValue().size() > 0
+                ? String.format(" Replacement suggestions: [%s]",
+                    termEntry.getValue().stream().collect(Collectors.joining(", ")))
+                : "";
         if (occurrence.trait.isPresent()) {
             String keyOrValue = occurrence.isTraitKeyName
                     ? "key"
                     : "value";
             String propertyPathFormatted = formatPropertyPath(occurrence.isTraitKeyName, occurrence.traitPropertyPath);
             if (occurrence.traitPropertyPath.isEmpty()) {
-                return String.format("Non-inclusive %s found on `%s` trait %s",
-                        words, Trait.getIdiomaticTraitName(occurrence.trait.get()), keyOrValue, propertyPathFormatted);
+                return String.format("Non-inclusive word '%s' found on `%s` trait %s.%s",
+                        termEntry.getKey(), Trait.getIdiomaticTraitName(occurrence.trait.get()),
+                        keyOrValue, propertyPathFormatted, replacementAddendum);
             } else {
-                return String.format("Non-inclusive %s found on `%s` trait %s at {%s}",
-                        words, Trait.getIdiomaticTraitName(occurrence.trait.get()), keyOrValue, propertyPathFormatted);
+                return String.format("Non-inclusive word '%s' found on `%s` trait %s at %s.%s",
+                        termEntry.getKey(), Trait.getIdiomaticTraitName(occurrence.trait.get()),
+                        keyOrValue, propertyPathFormatted, replacementAddendum);
             }
         } else {
-            return String.format("Non-inclusive %s on %s shape",
-                    words, occurrence.shape.getType().toString());
+            return String.format("Non-inclusive word '%s' found on %s shape.%s",
+                    termEntry.getKey(), occurrence.shape.getType().toString(), replacementAddendum);
         }
     }
 
