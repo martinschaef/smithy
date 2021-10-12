@@ -170,14 +170,16 @@ public abstract class AbstractModelTextValidator extends AbstractValidator {
         final boolean isTraitKeyName;            //If set to true, the problem text is the last key in the
                                                  // property path, not the value
 
-        private TextOccurrence(String text, Shape shape, Optional<Trait> trait, List<String> propertyPath,
+        private TextOccurrence(String text, Shape shape, Trait trait, List<String> propertyPath,
                                boolean isTraitKeyName) {
             if (propertyPath == null) {
                 throw new RuntimeException();
             }
             this.text = text;
             this.shape = shape;
-            this.trait = trait;
+            this.trait = trait != null
+                ? Optional.of(trait)
+                : Optional.empty();
             this.traitPropertyPath = propertyPath;
             this.isTraitKeyName = isTraitKeyName;
         }
@@ -230,10 +232,7 @@ public abstract class AbstractModelTextValidator extends AbstractValidator {
                     throw new IllegalStateException("Text must be specified");
                 }
 
-                Optional<Trait> traitArg = trait != null
-                        ? Optional.of(trait)
-                        : Optional.empty();
-                return new TextOccurrence(text, shape, traitArg, traitPropertyPath, isTraitKeyName);
+                return new TextOccurrence(text, shape, trait, traitPropertyPath, isTraitKeyName);
             }
         }
     }
