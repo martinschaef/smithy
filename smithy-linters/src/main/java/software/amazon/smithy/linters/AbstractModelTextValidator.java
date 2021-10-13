@@ -17,12 +17,10 @@ package software.amazon.smithy.linters;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -50,24 +48,23 @@ public abstract class AbstractModelTextValidator extends AbstractValidator {
     private static final Map<Model, List<TextOccurrence>> MODEL_TO_TEXT_MAP = new ConcurrentHashMap<>();
 
     /**
-     * Sub-classes must implement this method to take the following responsibilities:
+     * Sub-classes must implement this method to perform the following:
+     *   1) Decide if the text occurrence is at a relevant location to validate.
+     *   2) Analyze the text for whatever validation event it may or may not publish.
+     *   3) Produce a validation event, if necessary, and push it to the ValidationEvent consumer
      *
-     * 1) Decide if the text occurrence is
-     * 2)
-     *
-     * @param occurrence
-     * @param validationEventConsumer
+     * @param occurrence text occurrence found in the body of the model
+     * @param validationEventConsumer consumer to push ValidationEvents into
      */
     protected abstract void getValidationEvents(TextOccurrence occurrence,
                                                 Consumer<ValidationEvent> validationEventConsumer);
 
     @Override
     public List<ValidationEvent> validate(Model model) {
-        final Set<String> visited = new HashSet<>();
         List<TextOccurrence> textOccurrences = MODEL_TO_TEXT_MAP.computeIfAbsent(model, keyModel -> {
             List<TextOccurrence> texts = new LinkedList<>();
             model.shapes().filter(shape -> !Prelude.isPreludeShape(shape)).forEach(shape -> {
-                getTextOccurrences(shape, texts, visited);
+                getTextOccurrences(shape, texts);
             });
             return texts;
         });
@@ -82,32 +79,30 @@ public abstract class AbstractModelTextValidator extends AbstractValidator {
         return validationEvents;
     }
 
-    private static void getTextOccurrences(Shape shape, Collection<TextOccurrence> textOccurences,
-                                           Set<String> shapeIdsVisited) {
-        if (!shapeIdsVisited.contains(shape.getId().toString())) {
-            shapeIdsVisited.add(shape.getId().toString());
-            if (!shape.isMemberShape()) {
-                textOccurences.add(TextOccurrence.builder()
-                        .shape(shape)
-                        .text(shape.getId().getName())
-                        .build());
-            } else {
-                textOccurences.add(TextOccurrence.builder()
-                        .shape(shape)
-                        .text(shape.getId().getMember().get())
-                        .build());
-            }
+    private static void getTextOccurrences(Shape shape, Collection<TextOccurrence> textOccurences) {
+        textOccurences.add(TextOccurrence.builder()
+                .shape(shape)
+                .text(shape.getId().getName())
+                .build());
+
+        //iterate over the text contained in trait property values
+        shape.getAllTraits().entrySet().forEach(traitEntry -> {
+            getTextElementsForTrait(traitEntry.getValue().toNode(), traitEntry.getValue(), shape, textOccurences,
+                    new Stack<>());
+        });
+        //then iterate over all of its members + member traits
+        shape.members().forEach(memberShape -> {
+            textOccurences.add(TextOccurrence.builder()
+                    .shape(memberShape)
+                    .text(memberShape.getId().getName())
+                    .build());
 
             //iterate over the text contained in trait property values
             shape.getAllTraits().entrySet().forEach(traitEntry -> {
                 getTextElementsForTrait(traitEntry.getValue().toNode(), traitEntry.getValue(), shape, textOccurences,
                         new Stack<>());
             });
-            //then iterate over all of it's members
-            shape.members().forEach(memberShape -> {
-                getTextOccurrences(memberShape, textOccurences, shapeIdsVisited);
-            });
-        }
+        });
     }
 
     private static void getTextElementsForTrait(Node node, Trait trait,

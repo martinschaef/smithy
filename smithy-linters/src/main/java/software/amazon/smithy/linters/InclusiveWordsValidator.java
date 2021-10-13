@@ -29,7 +29,7 @@ import software.amazon.smithy.model.validation.ValidatorService;
 /**
  * <p>Validates that all shape names, and values do not contain non-inclusive words.
  * *
- * <p>See AbstractModelTextValidator for scan implementation details details
+ * <p>See AbstractModelTextValidator for scan implementation details.
  */
 public final class InclusiveWordsValidator extends AbstractModelTextValidator {
     static final Map<String, List<String>> BUILT_IN_NONINCLUSIVE_TERMS = new HashMap<String, List<String>>() {
@@ -85,9 +85,6 @@ public final class InclusiveWordsValidator extends AbstractModelTextValidator {
                 termsMap.putIfAbsent(termEntry.getKey(), termEntry.getValue());
             }
         }
-
-        System.out.printf("Non inclusive terms (keys) found: %s%n",
-                termsMap.keySet().stream().collect(Collectors.joining(", ")));
     }
 
     @Override
@@ -123,7 +120,7 @@ public final class InclusiveWordsValidator extends AbstractModelTextValidator {
                         termEntry.getKey(), Trait.getIdiomaticTraitName(occurrence.trait.get()),
                         keyOrValue, propertyPathFormatted, replacementAddendum);
             } else {
-                return String.format("Non-inclusive word '%s' found on `%s` trait %s at %s.%s",
+                return String.format("Non-inclusive word '%s' found on `%s` trait %s at {%s}.%s",
                         termEntry.getKey(), Trait.getIdiomaticTraitName(occurrence.trait.get()),
                         keyOrValue, propertyPathFormatted, replacementAddendum);
             }
