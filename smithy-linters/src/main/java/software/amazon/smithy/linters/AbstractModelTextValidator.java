@@ -25,11 +25,12 @@ import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import software.amazon.smithy.model.Model;
-import software.amazon.smithy.model.loader.Prelude;
 import software.amazon.smithy.model.node.ArrayNode;
 import software.amazon.smithy.model.node.Node;
 import software.amazon.smithy.model.node.ObjectNode;
+import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.Shape;
+import software.amazon.smithy.model.traits.ReferencesTrait;
 import software.amazon.smithy.model.traits.Trait;
 import software.amazon.smithy.model.validation.AbstractValidator;
 import software.amazon.smithy.model.validation.ValidationEvent;
@@ -44,7 +45,7 @@ import software.amazon.smithy.model.validation.ValidationEvent;
  *
  * <p>Prelude shape definitions are not examined, however all values
  */
-public abstract class AbstractModelTextValidator extends AbstractValidator {
+abstract class AbstractModelTextValidator extends AbstractValidator {
     private static final Map<Model, List<TextOccurrence>> MODEL_TO_TEXT_MAP = new ConcurrentHashMap<>();
 
     /**
@@ -63,7 +64,7 @@ public abstract class AbstractModelTextValidator extends AbstractValidator {
     public List<ValidationEvent> validate(Model model) {
         List<TextOccurrence> textOccurrences = MODEL_TO_TEXT_MAP.computeIfAbsent(model, keyModel -> {
             List<TextOccurrence> texts = new LinkedList<>();
-            model.shapes().filter(shape -> !Prelude.isPreludeShape(shape)).forEach(shape -> {
+            model.shapes().forEach(shape -> {
                 getTextOccurrences(shape, texts);
             });
             return texts;
@@ -75,42 +76,55 @@ public abstract class AbstractModelTextValidator extends AbstractValidator {
                 validationEvents.add(validationEvent);
             });
         }
-
         return validationEvents;
     }
 
-    private static void getTextOccurrences(Shape shape, Collection<TextOccurrence> textOccurences) {
-        textOccurences.add(TextOccurrence.builder()
-                .shape(shape)
-                .text(shape.getId().getName())
-                .build());
+    private static void getTextOccurrences(Shape shape, Collection<TextOccurrence> textOccurrences) {
+        if (shape.isMemberShape()) {
+            textOccurrences.add(TextOccurrence.builder()
+                    .locationType(TextLocationType.SHAPE)
+                    .shape(shape)
+                    .text(((MemberShape) shape).getMemberName())
+                    .build());
+        } else {
+            textOccurrences.add(TextOccurrence.builder()
+                    .locationType(TextLocationType.SHAPE)
+                    .shape(shape)
+                    .text(shape.getId().getName())
+                    .build());
+
+            //then iterate over all of its members + member traits
+            shape.members().forEach(memberShape -> {
+                textOccurrences.add(TextOccurrence.builder()
+                        .locationType(TextLocationType.SHAPE)
+                        .shape(memberShape)
+                        .text(memberShape.getMemberName())
+                        .build());
+
+                //iterate over the text contained in trait property values
+                memberShape.getAllTraits().entrySet().forEach(traitEntry -> {
+                    getTextOccurrencesForTrait(traitEntry.getValue().toNode(), traitEntry.getValue(),
+                            memberShape, textOccurrences, new Stack<>());
+                });
+            });
+        }
 
         //iterate over the text contained in trait property values
         shape.getAllTraits().entrySet().forEach(traitEntry -> {
-            getTextElementsForTrait(traitEntry.getValue().toNode(), traitEntry.getValue(), shape, textOccurences,
+            getTextOccurrencesForTrait(traitEntry.getValue().toNode(), traitEntry.getValue(), shape, textOccurrences,
                     new Stack<>());
-        });
-        //then iterate over all of its members + member traits
-        shape.members().forEach(memberShape -> {
-            textOccurences.add(TextOccurrence.builder()
-                    .shape(memberShape)
-                    .text(memberShape.getId().getName())
-                    .build());
-
-            //iterate over the text contained in trait property values
-            shape.getAllTraits().entrySet().forEach(traitEntry -> {
-                getTextElementsForTrait(traitEntry.getValue().toNode(), traitEntry.getValue(), shape, textOccurences,
-                        new Stack<>());
-            });
         });
     }
 
-    private static void getTextElementsForTrait(Node node, Trait trait,
-                                         Shape parentShape,
-                                         Collection<TextOccurrence> textOccurrences,
-                                         Stack<String> propertyPath) {
-        if (node.isStringNode()) {
+    private static void getTextOccurrencesForTrait(Node node, Trait trait,
+                                                   Shape parentShape,
+                                                   Collection<TextOccurrence> textOccurrences,
+                                                   Stack<String> propertyPath) {
+        if (trait.toShapeId().equals(ReferencesTrait.ID)) {
+            //skip ReferenceTrait because it is referring to other shapes already being checked
+        } else if (node.isStringNode()) {
             textOccurrences.add(TextOccurrence.builder()
+                    .locationType(TextLocationType.TRAIT_VALUE)
                     .shape(parentShape)
                     .trait(trait)
                     .traitPropertyPath(propertyPath)
@@ -123,25 +137,14 @@ public abstract class AbstractModelTextValidator extends AbstractValidator {
                         ? ""
                         : ".";
                 propertyPath.push(pathPrefix + memberEntry.getKey().getValue());
-                //Test the key. TODO: If possible, we do not need to test Trait modeled keys
-                //but within "document" type values in a trait
                 textOccurrences.add(TextOccurrence.builder()
+                        .locationType(TextLocationType.TRAIT_KEY)
                         .shape(parentShape)
                         .trait(trait)
                         .text(memberEntry.getKey().getValue())
                         .traitPropertyPath(propertyPath)
-                        .isTraitKeyName(true)
                         .build());
-                if (memberEntry.getValue().isStringNode()) {
-                    textOccurrences.add(TextOccurrence.builder()
-                            .shape(parentShape)
-                            .trait(trait)
-                            .text(memberEntry.getValue().asStringNode().get().getValue())
-                            .traitPropertyPath(propertyPath)
-                            .build());
-                } else {
-                    getTextElementsForTrait(memberEntry.getValue(), trait, parentShape, textOccurrences, propertyPath);
-                }
+                getTextOccurrencesForTrait(memberEntry.getValue(), trait, parentShape, textOccurrences, propertyPath);
                 propertyPath.pop();
             });
         } else if (node.isArrayNode()) {
@@ -149,24 +152,36 @@ public abstract class AbstractModelTextValidator extends AbstractValidator {
             final int[] index = {0};
             arrayNode.getElements().forEach(nodeElement -> {
                 propertyPath.push("[" + index[0] + "]");
-                getTextElementsForTrait(nodeElement, trait, parentShape, textOccurrences, propertyPath);
+                getTextOccurrencesForTrait(nodeElement, trait, parentShape, textOccurrences, propertyPath);
                 propertyPath.pop();
                 ++index[0];
             });
         }
-        //by now it's not a string value to look at, or any further structure to descend so there's nothing to do
+        //no further structure to descend so there's nothing to do
     }
 
-    static final class TextOccurrence {
-        final String text;                       //the actual text value, or name, with the problem text
-        final Shape shape;                       //If the problem is with the Shape itself, it's always the name
-        final Optional<Trait> trait;             //If present, the problem text is in the applied trait
-        final List<String> traitPropertyPath;    //Gives the property path in the trait value with the problem text
-        final boolean isTraitKeyName;            //If set to true, the problem text is the last key in the
-                                                 // property path, not the value
+    protected enum TextLocationType {
+        SHAPE,
+        TRAIT_VALUE,
+        TRAIT_KEY,
+        NAMESPACE
+    }
 
-        private TextOccurrence(String text, Shape shape, Trait trait, List<String> propertyPath,
-                               boolean isTraitKeyName) {
+    protected static final class TextOccurrence {
+        //Common label for where the text is located
+        final TextLocationType locationType;
+        //The text snippet to examine or has been reported to have a problem
+        final String text;
+        //Shape associated with the above text snippet
+        final Shape shape;
+        //If present, the problem text is in the applied trait
+        final Optional<Trait> trait;
+        //Gives the property path in the trait value with the problem text
+        final List<String> traitPropertyPath;
+
+        private TextOccurrence(TextLocationType locationType, String text, Shape shape,
+                               Trait trait, List<String> propertyPath) {
+            this.locationType = locationType;
             if (propertyPath == null) {
                 throw new RuntimeException();
             }
@@ -176,7 +191,6 @@ public abstract class AbstractModelTextValidator extends AbstractValidator {
                 ? Optional.of(trait)
                 : Optional.empty();
             this.traitPropertyPath = propertyPath;
-            this.isTraitKeyName = isTraitKeyName;
         }
 
         public static Builder builder() {
@@ -184,11 +198,11 @@ public abstract class AbstractModelTextValidator extends AbstractValidator {
         }
 
         static final class Builder {
+            private TextLocationType locationType;
             private String text;
             private Shape shape;
             private Trait trait;
             private List<String> traitPropertyPath = new ArrayList<>();
-            private boolean isTraitKeyName;
 
             private Builder() { }
 
@@ -209,8 +223,8 @@ public abstract class AbstractModelTextValidator extends AbstractValidator {
                 return this;
             }
 
-            public Builder isTraitKeyName(boolean isTraitKeyName) {
-                this.isTraitKeyName = isTraitKeyName;
+            public Builder locationType(TextLocationType locationType) {
+                this.locationType = locationType;
                 return this;
             }
 
@@ -220,14 +234,21 @@ public abstract class AbstractModelTextValidator extends AbstractValidator {
             }
 
             public TextOccurrence build() {
-                if (shape == null) {
-                    throw new IllegalStateException("Shape must be specified");
+                if (locationType == null) {
+                    throw new IllegalStateException("LocationType must be specified");
+                }
+                if (locationType != TextLocationType.NAMESPACE && shape == null) {
+                    throw new IllegalStateException("Shape must be specified if locationType is not namespace");
                 }
                 if (text == null) {
                     throw new IllegalStateException("Text must be specified");
                 }
+                if ((locationType == TextLocationType.TRAIT_KEY || locationType == TextLocationType.TRAIT_VALUE)
+                        && trait == null) {
+                    throw new IllegalStateException("Trait must be specified for locationType=" + locationType.name());
+                }
 
-                return new TextOccurrence(text, shape, trait, traitPropertyPath, isTraitKeyName);
+                return new TextOccurrence(locationType, text, shape, trait, traitPropertyPath);
             }
         }
     }

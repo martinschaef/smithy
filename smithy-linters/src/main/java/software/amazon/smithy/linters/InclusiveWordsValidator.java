@@ -25,6 +25,7 @@ import software.amazon.smithy.model.node.NodeMapper;
 import software.amazon.smithy.model.traits.Trait;
 import software.amazon.smithy.model.validation.ValidationEvent;
 import software.amazon.smithy.model.validation.ValidatorService;
+import software.amazon.smithy.utils.ListUtils;
 
 /**
  * <p>Validates that all shape names, and values do not contain non-inclusive words.
@@ -34,10 +35,10 @@ import software.amazon.smithy.model.validation.ValidatorService;
 public final class InclusiveWordsValidator extends AbstractModelTextValidator {
     static final Map<String, List<String>> BUILT_IN_NONINCLUSIVE_TERMS = new HashMap<String, List<String>>() {
         {
-            put("master", List.of("primary", "parent"));
-            put("slave", List.of("secondary", "replica", "clone", "child"));
-            put("blacklist", List.of("disallowlist"));
-            put("whitelist", List.of("allowlist"));
+            put("master", ListUtils.of("primary", "parent"));
+            put("slave", ListUtils.of("secondary", "replica", "clone", "child"));
+            put("blacklist", ListUtils.of("disallowlist"));
+            put("whitelist", ListUtils.of("allowlist"));
         }};
 
     public static final class Provider extends ValidatorService.Provider {
@@ -92,7 +93,7 @@ public final class InclusiveWordsValidator extends AbstractModelTextValidator {
                                        Consumer<ValidationEvent> validationEventConsumer) {
         for (Map.Entry<String, List<String>> termEntry: termsMap.entrySet()) {
             //lower casing the term will be more necessary when the terms are from config
-            if (occurrence.text.toLowerCase().contains(termEntry.getKey().toLowerCase())) {
+            if (containsTerm(occurrence.text, termEntry.getKey().toLowerCase())) {
                 if (occurrence.trait.isPresent()) {
                     validationEventConsumer.accept(warning(occurrence.shape, occurrence.trait.get().getSourceLocation(),
                             formatNonInclusiveWordsValidationMessage(termEntry, occurrence)));
@@ -104,37 +105,45 @@ public final class InclusiveWordsValidator extends AbstractModelTextValidator {
         }
     }
 
+    private static boolean containsTerm(String text, String term) {
+        return text.toLowerCase().contains(term);
+    }
+
     private static String formatNonInclusiveWordsValidationMessage(Map.Entry<String, List<String>> termEntry,
                                                                    TextOccurrence occurrence) {
         String replacementAddendum = termEntry.getValue().size() > 0
-                ? String.format(" Replacement suggestions: [%s]",
+                ? String.format(" Suggested alternatives: [%s]",
                     termEntry.getValue().stream().collect(Collectors.joining(", ")))
                 : "";
-        if (occurrence.trait.isPresent()) {
-            String keyOrValue = occurrence.isTraitKeyName
-                    ? "key"
-                    : "value";
-            String propertyPathFormatted = formatPropertyPath(occurrence.isTraitKeyName, occurrence.traitPropertyPath);
-            if (occurrence.traitPropertyPath.isEmpty()) {
-                return String.format("Non-inclusive word '%s' found on `%s` trait %s.%s",
+        switch (occurrence.locationType) {
+            case SHAPE:
+                return String.format("Non-inclusive word '%s' found on %s shape.%s",
+                        termEntry.getKey(), occurrence.shape.getType().toString(), replacementAddendum);
+            case NAMESPACE:
+                return String.format("Non-inclusive word '%s' found on `%s` namespace.%s",
+                        termEntry.getKey(), occurrence.text, replacementAddendum);
+            case TRAIT_KEY:
+                String keyPropertyPathFormatted = formatPropertyPath(occurrence.traitPropertyPath);
+                return String.format("Non-inclusive word '%s' found on `%s` trait key at {%s}.%s",
                         termEntry.getKey(), Trait.getIdiomaticTraitName(occurrence.trait.get()),
-                        keyOrValue, propertyPathFormatted, replacementAddendum);
-            } else {
-                return String.format("Non-inclusive word '%s' found on `%s` trait %s at {%s}.%s",
-                        termEntry.getKey(), Trait.getIdiomaticTraitName(occurrence.trait.get()),
-                        keyOrValue, propertyPathFormatted, replacementAddendum);
-            }
-        } else {
-            return String.format("Non-inclusive word '%s' found on %s shape.%s",
-                    termEntry.getKey(), occurrence.shape.getType().toString(), replacementAddendum);
+                        keyPropertyPathFormatted, replacementAddendum);
+            case TRAIT_VALUE:
+                String valuePropertyPathFormatted = formatPropertyPath(occurrence.traitPropertyPath);
+                if (occurrence.traitPropertyPath.isEmpty()) {
+                    return String.format("Non-inclusive word '%s' found on `%s` trait.%s",
+                            termEntry.getKey(), Trait.getIdiomaticTraitName(occurrence.trait.get()),
+                            replacementAddendum);
+                } else {
+                    return String.format("Non-inclusive word '%s' found on `%s` trait value at {%s}.%s",
+                            termEntry.getKey(), Trait.getIdiomaticTraitName(occurrence.trait.get()),
+                            valuePropertyPathFormatted, replacementAddendum);
+                }
+            default:
+                throw new IllegalStateException();
         }
     }
 
-    private static String formatPropertyPath(boolean isKeyName, List<String> propertyPath) {
-        if (isKeyName) {
-            return propertyPath.stream().limit(propertyPath.size() - 1).collect(Collectors.joining(""));
-        } else {
-            return propertyPath.stream().collect(Collectors.joining(""));
-        }
+    private static String formatPropertyPath(List<String> propertyPath) {
+        return propertyPath.stream().collect(Collectors.joining(""));
     }
 }
