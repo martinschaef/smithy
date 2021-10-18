@@ -113,19 +113,6 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
                     .shape(shape)
                     .text(shape.getId().getName())
                     .build());
-
-            shape.members().forEach(memberShape -> {
-                textOccurrences.add(TextOccurrence.builder()
-                        .locationType(TextLocationType.SHAPE)
-                        .shape(memberShape)
-                        .text(memberShape.getMemberName())
-                        .build());
-
-                memberShape.getAllTraits().values().forEach(trait -> {
-                    getTextOccurrencesForTrait(trait.toNode(), trait,
-                            memberShape, textOccurrences, new Stack<>(), namespaces);
-                });
-            });
         }
 
         shape.getAllTraits().values().forEach(trait  -> {
@@ -190,15 +177,10 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
     }
 
     protected static final class TextOccurrence {
-        //Common label for where the text is located
         final TextLocationType locationType;
-        //The text snippet to examine or has been reported to have a problem
         final String text;
-        //Shape associated with the above text snippet
         final Shape shape;
-        //If present, the problem text is in the applied trait
         final Optional<Trait> trait;
-        //Gives the property path in the trait value with the problem text
         final List<String> traitPropertyPath;
 
         private TextOccurrence(TextLocationType locationType, String text, Shape shape,
