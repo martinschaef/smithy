@@ -26,8 +26,10 @@ import software.amazon.smithy.model.node.NodeMapper;
 import software.amazon.smithy.model.traits.Trait;
 import software.amazon.smithy.model.validation.Severity;
 import software.amazon.smithy.model.validation.ValidationEvent;
+import software.amazon.smithy.model.validation.ValidationUtils;
 import software.amazon.smithy.model.validation.ValidatorService;
 import software.amazon.smithy.utils.ListUtils;
+import software.amazon.smithy.utils.StringUtils;
 
 /**
  * <p>Validates that all shape names, and values do not contain non-inclusive words.
@@ -100,7 +102,7 @@ public final class InclusiveWordsValidator extends AbstractModelTextValidator {
                     case NAMESPACE:
                         validationEventConsumer.accept(ValidationEvent.builder()
                                 .sourceLocation(SourceLocation.none())
-                                .id("InclusiveWordFilter")
+                                .id(this.getClass().getSimpleName().replaceFirst("Validator$", ""))
                                 .severity(Severity.WARNING)
                                 .message(formatNonInclusiveWordsValidationMessage(termEntry, occurrence))
                                 .build());
@@ -127,31 +129,32 @@ public final class InclusiveWordsValidator extends AbstractModelTextValidator {
     private static String formatNonInclusiveWordsValidationMessage(Map.Entry<String, List<String>> termEntry,
                                                                    TextOccurrence occurrence) {
         String replacementAddendum = termEntry.getValue().size() > 0
-                ? String.format(" Suggested alternatives: [%s]",
-                    termEntry.getValue().stream().collect(Collectors.joining(", ")))
+                ? String.format(" Consider using one of the following words instead: %s",
+                    ValidationUtils.tickedList(termEntry.getValue()))
                 : "";
         switch (occurrence.locationType) {
             case SHAPE:
-                return String.format("Non-inclusive word '%s' found in %s shape name.%s",
-                        termEntry.getKey(), occurrence.shape.getType().toString(), replacementAddendum);
+                return String.format("%s shape uses a non-inclusive word `%s`.%s",
+                        StringUtils.capitalize(occurrence.shape.getType().toString()),
+                        termEntry.getKey(), replacementAddendum);
             case NAMESPACE:
-                return String.format("Non-inclusive word '%s' found in `%s` namespace.%s",
-                        termEntry.getKey(), occurrence.text, replacementAddendum);
+                return String.format("%s namespace uses a non-inclusive word `%s`.%s",
+                        occurrence.text, termEntry.getKey(), replacementAddendum);
             case TRAIT_KEY:
                 String keyPropertyPathFormatted = formatPropertyPath(occurrence.traitPropertyPath);
-                return String.format("Non-inclusive word '%s' found in `%s` trait key at {%s}.%s",
-                        termEntry.getKey(), Trait.getIdiomaticTraitName(occurrence.trait.get()),
-                        keyPropertyPathFormatted, replacementAddendum);
+                return String.format("`%s` trait has key {%s} that uses a non-inclusive word `%s`.%s",
+                        Trait.getIdiomaticTraitName(occurrence.trait.get()), keyPropertyPathFormatted,
+                        termEntry.getKey(), replacementAddendum);
             case TRAIT_VALUE:
                 String valuePropertyPathFormatted = formatPropertyPath(occurrence.traitPropertyPath);
                 if (occurrence.traitPropertyPath.isEmpty()) {
-                    return String.format("Non-inclusive word '%s' found on `%s` trait value.%s",
-                            termEntry.getKey(), Trait.getIdiomaticTraitName(occurrence.trait.get()),
+                    return String.format("'%s' trait has a value that contains a non-inclusive word `%s`.%s",
+                            Trait.getIdiomaticTraitName(occurrence.trait.get()), termEntry.getKey(),
                             replacementAddendum);
                 } else {
-                    return String.format("Non-inclusive word '%s' found on `%s` trait value at {%s}.%s",
-                            termEntry.getKey(), Trait.getIdiomaticTraitName(occurrence.trait.get()),
-                            valuePropertyPathFormatted, replacementAddendum);
+                    return String.format("'%s' trait value at path {%s} contains a non-inclusive word `%s`.%s",
+                            Trait.getIdiomaticTraitName(occurrence.trait.get()), valuePropertyPathFormatted,
+                            termEntry.getKey(), replacementAddendum);
                 }
             default:
                 throw new IllegalStateException();

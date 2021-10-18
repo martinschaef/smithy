@@ -1,0 +1,5 @@
+[WARNING] -: ns.foo namespace uses a non-inclusive word `foo`. Consider using one of the following words instead: `bar` | InclusiveWords
+[WARNING] ns.foo#MyMasterService: Service shape uses a non-inclusive word `master`. Consider using one of the following words instead: `parent`, `primary` | InclusiveWords
+[WARNING] ns.foo#BlackListThings: Operation shape uses a non-inclusive word `blacklist`. Consider using one of the following words instead: `disallowlist` | InclusiveWords
+[WARNING] ns.foo#AInput$foo: Member shape uses a non-inclusive word `foo`. Consider using one of the following words instead: `bar` | InclusiveWords
+[WARNING] ns.foo#AInput$foo: 'documentation' trait has a value that contains a non-inclusive word `apple`. Consider using one of the following words instead: `banana` | InclusiveWords
