@@ -30,10 +30,14 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.node.ArrayNode;
 import software.amazon.smithy.model.node.Node;
 import software.amazon.smithy.model.node.ObjectNode;
+import software.amazon.smithy.model.shapes.DocumentShape;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.Shape;
+import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.traits.ReferencesTrait;
 import software.amazon.smithy.model.traits.Trait;
+import software.amazon.smithy.model.traits.TraitDefinition;
+import software.amazon.smithy.model.transform.plugins.CleanTraitDefinitions;
 import software.amazon.smithy.model.validation.AbstractValidator;
 import software.amazon.smithy.model.validation.ValidationEvent;
 
@@ -77,7 +81,7 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
         List<TextOccurrence> textOccurrences = MODEL_TO_TEXT_MAP.computeIfAbsent(model, keyModel -> {
             List<TextOccurrence> texts = new LinkedList<>();
             model.shapes().forEach(shape -> {
-                getTextOccurrences(shape, texts, namespaces);
+                getTextOccurrences(shape, texts, namespaces, model);
             });
             return texts;
         });
@@ -99,7 +103,7 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
     }
 
     private static void getTextOccurrences(Shape shape, Collection<TextOccurrence> textOccurrences,
-                                           Set<String> namespaces) {
+                                           Set<String> namespaces, Model model) {
         namespaces.add(shape.getId().getNamespace());
         if (shape.isMemberShape()) {
             textOccurrences.add(TextOccurrence.builder()
@@ -116,8 +120,9 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
         }
 
         shape.getAllTraits().values().forEach(trait  -> {
+            Shape traitShape = model.expectShape(trait.toShapeId());
             getTextOccurrencesForTrait(trait.toNode(), trait, shape, textOccurrences,
-                    new Stack<>(), namespaces);
+                    new Stack<>(), namespaces, model, traitShape);
         });
     }
 
@@ -125,7 +130,9 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
                                                    Shape parentShape,
                                                    Collection<TextOccurrence> textOccurrences,
                                                    Stack<String> propertyPath,
-                                                   Set<String> namespaces) {
+                                                   Set<String> namespaces,
+                                                   Model model,
+                                                   Shape currentTraitPropertyShape) {
         namespaces.add(trait.toShapeId().getNamespace());
         if (trait.toShapeId().equals(ReferencesTrait.ID)) {
             //Skip ReferenceTrait because it is referring to other shapes already being checked.
@@ -144,15 +151,18 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
                         ? ""
                         : ".";
                 propertyPath.push(pathPrefix + memberEntry.getKey().getValue());
-                textOccurrences.add(TextOccurrence.builder()
-                        .locationType(TextLocationType.TRAIT_KEY)
-                        .shape(parentShape)
-                        .trait(trait)
-                        .text(memberEntry.getKey().getValue())
-                        .traitPropertyPath(propertyPath)
-                        .build());
+                if (!isRedundantlyCheckedTraitPropertyKey(currentTraitPropertyShape)) {
+                    textOccurrences.add(TextOccurrence.builder()
+                            .locationType(TextLocationType.TRAIT_KEY)
+                            .shape(parentShape)
+                            .trait(trait)
+                            .text(memberEntry.getKey().getValue())
+                            .traitPropertyPath(propertyPath)
+                            .build());
+                }
+                Shape memberTypeShape = getChildMemberShapeType(memberEntry.getKey().getValue(), model, currentTraitPropertyShape);
                 getTextOccurrencesForTrait(memberEntry.getValue(), trait, parentShape, textOccurrences,
-                        propertyPath, namespaces);
+                        propertyPath, namespaces, model, memberTypeShape);
                 propertyPath.pop();
             });
         } else if (node.isArrayNode()) {
@@ -161,12 +171,30 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
             arrayNode.getElements().forEach(nodeElement -> {
                 propertyPath.push("[" + index[0] + "]");
                 getTextOccurrencesForTrait(nodeElement, trait, parentShape, textOccurrences,
-                        propertyPath, namespaces);
+                        propertyPath, namespaces, model, currentTraitPropertyShape);
                 propertyPath.pop();
                 ++index[0];
             });
         }
         //no further structure to descend so there's nothing to do
+    }
+
+    private static Shape getChildMemberShapeType(String memberKey, Model model, Shape fromShape) {
+        if (fromShape != null) {
+            Shape childShape = null;
+            if (fromShape instanceof DocumentShape) {
+                childShape = null;
+            } else if (fromShape instanceof StructureShape) {
+                StructureShape structureShape = (StructureShape)fromShape;
+                childShape = model.getShape(structureShape.getMember(memberKey).get().getTarget()).get();
+            }
+            return childShape;
+        }
+        return null;
+    }
+
+    private static boolean isRedundantlyCheckedTraitPropertyKey(Shape traitPropertyShape) {
+        return (traitPropertyShape instanceof DocumentShape);
     }
 
     protected enum TextLocationType {
