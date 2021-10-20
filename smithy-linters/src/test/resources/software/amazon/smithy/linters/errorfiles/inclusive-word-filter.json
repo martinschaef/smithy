@@ -12,6 +12,9 @@
                 },
                 "nested": {
                     "target": "ns.foo#NestedTraitStructure"
+                },
+                "collection": {
+                    "target": "ns.foo#ListOfDocs"
                 }
             },
             "traits": {
@@ -30,6 +33,12 @@
                 "master_key_violation": {
                     "target": "smithy.api#String"
                 }
+            }
+        },
+        "ns.foo#ListOfDocs": {
+            "type": "list",
+            "member": {
+                "target": "smithy.api#Document"
             }
         },
         "ns.foo#MyMasterService": {
@@ -79,7 +88,12 @@
                     "document": {
                         "foo": [{"bar": "whitelist_value_violation_3"}],
                         "whitelist_doc_key_violation_1": "safe_value"
-                    }
+                    },
+                    "collection": [
+                        {"free_form_key": "value"},
+                        {"blacklist_key":  "problem"},
+                        {"key":  "problem_whitelist_value"}
+                    ]
                 }
             }
         },
