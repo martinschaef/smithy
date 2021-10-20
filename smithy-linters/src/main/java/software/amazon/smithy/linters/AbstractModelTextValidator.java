@@ -188,10 +188,10 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
         if (fromShape != null) {
             Shape childShape = null;
             if (fromShape instanceof StructureShape) {
-                StructureShape structureShape = (StructureShape)fromShape;
+                StructureShape structureShape = (StructureShape) fromShape;
                 childShape = model.getShape(structureShape.getMember(memberKey).get().getTarget()).get();
             } else if (fromShape instanceof CollectionShape) {
-                CollectionShape collectionShape = (CollectionShape)fromShape;
+                CollectionShape collectionShape = (CollectionShape) fromShape;
                 childShape = model.getShape(collectionShape.getMember().getTarget()).get();
             }
             return childShape;

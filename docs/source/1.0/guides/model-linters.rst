@@ -128,6 +128,76 @@ Example:
     ]
 
 
+.. _InclusiveWords:
+
+InclusiveWords
+=========
+
+Validates that all text content in a model (i.e. shape names, member names,
+documentation, trait values, etc.) do not contain words that perpetuate cultural
+biases. This validator has a built-in set of bias words that are commonly
+found in APIs along with suggested alternatives.
+
+Non-inclusive words are case-insensitively substring matched and can have any
+leading or trailing whitespace or non-whitespace characters.
+
+Rationale
+    Intent doesn’t always match impact. Sometimes, intent is absent altogether.
+    Maybe "blacklist" and "whitelist" are just the terms you and countless
+    others learned years ago. But when you kept using them, you unconsciously
+    perpetuated bias. If we act with more intention to change and improve our
+    language for the greater benefit of everyone (even if it’s awkward,
+    uncomfortable, or inconvenient at first), we perpetuate positive change
+    instead.
+
+Default severity
+    ``WARNING``
+
+Configuration
+    .. list-table::
+       :header-rows: 1
+       :widths: 20 20 60
+
+       * - Property
+         - Type
+         - Description
+           * - appendNonInclusiveWords
+         - { ``keyword`` -> [ ``alternatives`` ] }
+         - A set of mappings of non-inclusive words to their suggested
+           alternatives to be applied in addition to the validator's built-in
+           mappings. If alternatives is empty, no suggestion is made in the
+           generated warning message.
+       * - overrideNonInclusiveWords
+         - { ``keyword`` -> [ ``alternatives`` ] }
+         - A set of mappings of non-inclusive words to their suggested
+           alternatives to replace the validator's built-in mappings. If
+           alternatives is empty, no suggestion is made in the generated
+           warning message.
+
+.. note::
+
+    If both ``appendNonInclusiveWords`` and ``overrideNonInclusiveWords`` are
+    provided, ``overrideNonInclusiveWords`` is applied first, disabling the
+    built-in filter mappings. Then ``appendNonInclusiveWords`` is applied
+    adding further mappings to search for.
+
+Example:
+
+.. code-block:: smithy
+
+    $version: "1.0"
+
+    metadata validators = [{
+        name: "InclusiveWords"
+        configuration: {
+            appendNonInclusiveWords: {
+                mankind: ["humankind"],
+                old: ["legacy", "geriatric"]
+            }
+        }
+    }]
+
+
 .. _ReservedWords:
 
 ReservedWords
