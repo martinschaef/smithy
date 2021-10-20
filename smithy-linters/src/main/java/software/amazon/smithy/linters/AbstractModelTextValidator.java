@@ -36,8 +36,6 @@ import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.traits.ReferencesTrait;
 import software.amazon.smithy.model.traits.Trait;
-import software.amazon.smithy.model.traits.TraitDefinition;
-import software.amazon.smithy.model.transform.plugins.CleanTraitDefinitions;
 import software.amazon.smithy.model.validation.AbstractValidator;
 import software.amazon.smithy.model.validation.ValidationEvent;
 
@@ -121,18 +119,18 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
 
         shape.getAllTraits().values().forEach(trait  -> {
             Shape traitShape = model.expectShape(trait.toShapeId());
-            getTextOccurrencesForTrait(trait.toNode(), trait, shape, textOccurrences,
+            getTextOccurrencesForAppliedTrait(trait.toNode(), trait, shape, textOccurrences,
                     new Stack<>(), namespaces, model, traitShape);
         });
     }
 
-    private static void getTextOccurrencesForTrait(Node node, Trait trait,
-                                                   Shape parentShape,
-                                                   Collection<TextOccurrence> textOccurrences,
-                                                   Stack<String> propertyPath,
-                                                   Set<String> namespaces,
-                                                   Model model,
-                                                   Shape currentTraitPropertyShape) {
+    private static void getTextOccurrencesForAppliedTrait(Node node, Trait trait,
+                                                          Shape parentShape,
+                                                          Collection<TextOccurrence> textOccurrences,
+                                                          Stack<String> propertyPath,
+                                                          Set<String> namespaces,
+                                                          Model model,
+                                                          Shape currentTraitPropertyShape) {
         namespaces.add(trait.toShapeId().getNamespace());
         if (trait.toShapeId().equals(ReferencesTrait.ID)) {
             //Skip ReferenceTrait because it is referring to other shapes already being checked.
@@ -160,8 +158,9 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
                             .traitPropertyPath(propertyPath)
                             .build());
                 }
-                Shape memberTypeShape = getChildMemberShapeType(memberEntry.getKey().getValue(), model, currentTraitPropertyShape);
-                getTextOccurrencesForTrait(memberEntry.getValue(), trait, parentShape, textOccurrences,
+                Shape memberTypeShape = getChildMemberShapeType(memberEntry.getKey().getValue(),
+                        model, currentTraitPropertyShape);
+                getTextOccurrencesForAppliedTrait(memberEntry.getValue(), trait, parentShape, textOccurrences,
                         propertyPath, namespaces, model, memberTypeShape);
                 propertyPath.pop();
             });
@@ -170,7 +169,7 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
             final int[] index = {0};
             arrayNode.getElements().forEach(nodeElement -> {
                 propertyPath.push("[" + index[0] + "]");
-                getTextOccurrencesForTrait(nodeElement, trait, parentShape, textOccurrences,
+                getTextOccurrencesForAppliedTrait(nodeElement, trait, parentShape, textOccurrences,
                         propertyPath, namespaces, model, currentTraitPropertyShape);
                 propertyPath.pop();
                 ++index[0];
