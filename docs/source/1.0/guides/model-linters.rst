@@ -142,13 +142,10 @@ Non-inclusive words are case-insensitively substring matched and can have any
 leading or trailing whitespace or non-whitespace characters.
 
 Rationale
-    Intent doesn’t always match impact. Sometimes, intent is absent altogether.
-    Maybe "blacklist" and "whitelist" are just the terms you and countless
-    others learned years ago. But when you kept using them, you unconsciously
-    perpetuated bias. If we act with more intention to change and improve our
-    language for the greater benefit of everyone (even if it’s awkward,
-    uncomfortable, or inconvenient at first), we perpetuate positive change
-    instead.
+    Intent doesn’t always match impact. "Blacklist" and "whitelist" may have
+    been acceptable terms before, but in truth they perpetuated bias. We
+    provide this validator for the benefit of everyone (even if it’s awkward,
+    uncomfortable, or inconvenient) for positive change.
 
 Default severity
     ``WARNING``
