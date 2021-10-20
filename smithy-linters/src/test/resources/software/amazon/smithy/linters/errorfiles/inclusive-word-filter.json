@@ -74,6 +74,9 @@
                         "smithy.api#documentation": "These docs are apples!",
                         "ns.foo#MySimpleValueTrait": "slave_value_in_trait"
                     }
+                },
+                "master_member_name": {
+                    "target": "smithy.api#String"
                 }
             }
         },

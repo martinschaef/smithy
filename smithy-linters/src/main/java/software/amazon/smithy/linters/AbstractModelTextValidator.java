@@ -84,7 +84,7 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
             return texts;
         });
 
-        for (String namespace:namespaces) {
+        for (String namespace : namespaces) {
             textOccurrences.add(TextOccurrence.builder()
                     .locationType(TextLocationType.NAMESPACE)
                     .text(namespace)
@@ -92,7 +92,7 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
         }
 
         List<ValidationEvent> validationEvents = new LinkedList<>();
-        for (TextOccurrence text:textOccurrences) {
+        for (TextOccurrence text : textOccurrences) {
             getValidationEvents(text, validationEvent -> {
                 validationEvents.add(validationEvent);
             });
