@@ -29,6 +29,7 @@ import software.amazon.smithy.model.validation.ValidationEvent;
 import software.amazon.smithy.model.validation.ValidationUtils;
 import software.amazon.smithy.model.validation.ValidatorService;
 import software.amazon.smithy.utils.ListUtils;
+import software.amazon.smithy.utils.MapUtils;
 import software.amazon.smithy.utils.StringUtils;
 
 /**
@@ -37,13 +38,12 @@ import software.amazon.smithy.utils.StringUtils;
  * <p>See AbstractModelTextValidator for scan implementation details.
  */
 public final class InclusiveWordsValidator extends AbstractModelTextValidator {
-    static final Map<String, List<String>> BUILT_IN_NONINCLUSIVE_TERMS = new HashMap<String, List<String>>() {
-        {
-            put("master", ListUtils.of("primary", "parent"));
-            put("slave", ListUtils.of("secondary", "replica", "clone", "child"));
-            put("blacklist", ListUtils.of("disallowlist"));
-            put("whitelist", ListUtils.of("allowlist"));
-        }};
+    static final Map<String, List<String>> BUILT_IN_NONINCLUSIVE_TERMS = MapUtils.of(
+            "master", ListUtils.of("primary", "parent"),
+            "slave", ListUtils.of("secondary", "replica", "clone", "child"),
+            "blacklist", ListUtils.of("disallowlist"),
+            "whitelist", ListUtils.of("allowlist")
+        );
 
     public static final class Provider extends ValidatorService.Provider {
         public Provider() {

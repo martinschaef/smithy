@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
@@ -218,10 +219,21 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
                                Shape shape,
                                Trait trait,
                                List<String> propertyPath) {
-            this.locationType = locationType;
-            if (propertyPath == null) {
-                throw new RuntimeException();
+            Objects.requireNonNull(locationType, "LocationType must be specified");
+            if (locationType != TextLocationType.NAMESPACE && shape == null) {
+                throw new IllegalStateException("Shape must be specified if locationType is not namespace");
             }
+            Objects.requireNonNull(text, "Text must be specified");
+            if (locationType == TextLocationType.TRAIT_KEY || locationType == TextLocationType.TRAIT_VALUE) {
+                if (trait == null) {
+                    throw new IllegalStateException("Trait must be specified for locationType=" + locationType.name());
+                } else if (propertyPath == null) {
+                    throw new IllegalStateException("PropertyPath must be specified for locationType="
+                            + locationType.name());
+                }
+            }
+
+            this.locationType = locationType;
             this.text = text;
             this.shape = shape;
             this.trait = trait != null
