@@ -85,11 +85,7 @@ public final class InclusiveWordsValidator extends AbstractModelTextValidator {
                 ? new HashMap<>(BUILT_IN_NONINCLUSIVE_TERMS)
                 : new HashMap<>(config.getOverrideNonInclusiveWords());
 
-        if (config.getAppendNonInclusiveWords() != null) {
-            for (Map.Entry<String, List<String>> termEntry:config.getAppendNonInclusiveWords().entrySet()) {
-                termsMap.putIfAbsent(termEntry.getKey(), termEntry.getValue());
-            }
-        }
+        termsMap.putAll(config.getAppendNonInclusiveWords());
     }
 
     @Override
