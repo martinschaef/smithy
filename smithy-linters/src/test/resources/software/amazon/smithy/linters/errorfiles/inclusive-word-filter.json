@@ -107,7 +107,7 @@
     "metadata": {
         "validators": [
             {
-                "name": "InclusiveWords"
+                "name": "NoninclusiveTerms"
             }
         ]
     }

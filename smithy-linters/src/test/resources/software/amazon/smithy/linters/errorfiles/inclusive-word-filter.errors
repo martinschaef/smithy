@@ -1,12 +1,12 @@
-[WARNING] ns.foo#MyMasterService: Service shape uses a non-inclusive word `master`. Consider using one of the following words instead: `parent`, `primary` | InclusiveWords
-[WARNING] ns.foo#BlackListThings: Operation shape uses a non-inclusive word `blacklist`. Consider using one of the following words instead: `disallowlist` | InclusiveWords
-[WARNING] ns.foo#MyWhitelistTrait: Structure shape uses a non-inclusive word `whitelist`. Consider using one of the following words instead: `allowlist` | InclusiveWords
-[WARNING] ns.foo#AInput$master_member_name: Member shape uses a non-inclusive word `master`. Consider using one of the following words instead: `parent`, `primary` | InclusiveWords
-[WARNING] ns.foo#NestedTraitStructure$master_key_violation: Member shape uses a non-inclusive word `master`. Consider using one of the following words instead: `parent`, `primary` | InclusiveWords
-[WARNING] ns.foo#AInput$foo: 'ns.foo#MySimpleValueTrait' trait has a value that contains a non-inclusive word `slave`. Consider using one of the following words instead: `child`, `clone`, `replica`, `secondary` | InclusiveWords
-[WARNING] ns.foo#AOutput: 'ns.foo#MyWhitelistTrait' trait value at path {document.foo[0].bar} contains a non-inclusive word `whitelist`. Consider using one of the following words instead: `allowlist` | InclusiveWords
-[WARNING] ns.foo#AOutput: 'ns.foo#MyWhitelistTrait' trait value at path {nested.master_key_violation} contains a non-inclusive word `whitelist`. Consider using one of the following words instead: `allowlist` | InclusiveWords
-[WARNING] ns.foo#AOutput: 'ns.foo#MyWhitelistTrait' trait value at path {string_value} contains a non-inclusive word `whitelist`. Consider using one of the following words instead: `allowlist` | InclusiveWords
-[WARNING] ns.foo#AOutput: `ns.foo#MyWhitelistTrait` trait has key {document.whitelist_doc_key_violation_1} that uses a non-inclusive word `whitelist`. Consider using one of the following words instead: `allowlist` | InclusiveWords
-[WARNING] ns.foo#AOutput: 'ns.foo#MyWhitelistTrait' trait value at path {collection[2].key} contains a non-inclusive word `whitelist`. Consider using one of the following words instead: `allowlist` | InclusiveWords
-[WARNING] ns.foo#AOutput: `ns.foo#MyWhitelistTrait` trait has key {collection[1].blacklist_key} that uses a non-inclusive word `blacklist`. Consider using one of the following words instead: `disallowlist` | InclusiveWords
+[WARNING] ns.foo#MyMasterService: Service shape uses a non-inclusive word `master`. Consider using one of the following words instead: `main`, `parent`, `primary` | NoninclusiveTerms
+[WARNING] ns.foo#BlackListThings: Operation shape uses a non-inclusive word `blacklist`. Consider using one of the following words instead: `denylist` | NoninclusiveTerms
+[WARNING] ns.foo#MyWhitelistTrait: Structure shape uses a non-inclusive word `whitelist`. Consider using one of the following words instead: `allowlist` | NoninclusiveTerms
+[WARNING] ns.foo#AInput$master_member_name: Member shape uses a non-inclusive word `master`. Consider using one of the following words instead: `main`, `parent`, `primary` | NoninclusiveTerms
+[WARNING] ns.foo#NestedTraitStructure$master_key_violation: Member shape uses a non-inclusive word `master`. Consider using one of the following words instead: `main`, `parent`, `primary` | NoninclusiveTerms
+[WARNING] ns.foo#AInput$foo: 'ns.foo#MySimpleValueTrait' trait has a value that contains a non-inclusive word `slave`. Consider using one of the following words instead: `child`, `clone`, `replica`, `secondary` | NoninclusiveTerms
+[WARNING] ns.foo#AOutput: 'ns.foo#MyWhitelistTrait' trait value at path {document.foo[0].bar} contains a non-inclusive word `whitelist`. Consider using one of the following words instead: `allowlist` | NoninclusiveTerms
+[WARNING] ns.foo#AOutput: 'ns.foo#MyWhitelistTrait' trait value at path {nested.master_key_violation} contains a non-inclusive word `whitelist`. Consider using one of the following words instead: `allowlist` | NoninclusiveTerms
+[WARNING] ns.foo#AOutput: 'ns.foo#MyWhitelistTrait' trait value at path {string_value} contains a non-inclusive word `whitelist`. Consider using one of the following words instead: `allowlist` | NoninclusiveTerms
+[WARNING] ns.foo#AOutput: `ns.foo#MyWhitelistTrait` trait has key {document.whitelist_doc_key_violation_1} that uses a non-inclusive word `whitelist`. Consider using one of the following words instead: `allowlist` | NoninclusiveTerms
+[WARNING] ns.foo#AOutput: 'ns.foo#MyWhitelistTrait' trait value at path {collection[2].key} contains a non-inclusive word `whitelist`. Consider using one of the following words instead: `allowlist` | NoninclusiveTerms
+[WARNING] ns.foo#AOutput: `ns.foo#MyWhitelistTrait` trait has key {collection[1].blacklist_key} that uses a non-inclusive word `blacklist`. Consider using one of the following words instead: `denylist` | NoninclusiveTerms

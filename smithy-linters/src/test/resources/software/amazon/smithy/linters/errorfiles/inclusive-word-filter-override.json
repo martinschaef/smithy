@@ -46,7 +46,7 @@
     "metadata": {
         "validators": [
             {
-                "name": "InclusiveWords",
+                "name": "NoninclusiveTerms",
                 "configuration": {
                     "overrideNonInclusiveWords": {
                         "apple": ["banana"],

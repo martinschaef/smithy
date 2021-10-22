@@ -131,7 +131,7 @@ Example:
 .. _InclusiveWords:
 
 InclusiveWords
-=========
+==============
 
 Validates that all text content in a model (i.e. shape names, member names,
 documentation, trait values, etc.) do not contain words that perpetuate cultural

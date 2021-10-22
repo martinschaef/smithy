@@ -33,23 +33,23 @@ import software.amazon.smithy.utils.MapUtils;
 import software.amazon.smithy.utils.StringUtils;
 
 /**
- * <p>Validates that all shape names, and values do not contain non-inclusive words.
+ * <p>Validates that all shape names, and values does not contain non-inclusive words.
  * *
  * <p>See AbstractModelTextValidator for scan implementation details.
  */
-public final class InclusiveWordsValidator extends AbstractModelTextValidator {
+public final class NoninclusiveTermsValidator extends AbstractModelTextValidator {
     static final Map<String, List<String>> BUILT_IN_NONINCLUSIVE_TERMS = MapUtils.of(
-            "master", ListUtils.of("primary", "parent"),
+            "master", ListUtils.of("primary", "parent", "main"),
             "slave", ListUtils.of("secondary", "replica", "clone", "child"),
-            "blacklist", ListUtils.of("disallowlist"),
+            "blacklist", ListUtils.of("denylist"),
             "whitelist", ListUtils.of("allowlist")
         );
 
     public static final class Provider extends ValidatorService.Provider {
         public Provider() {
-            super(InclusiveWordsValidator.class, node -> {
+            super(NoninclusiveTermsValidator.class, node -> {
                 NodeMapper mapper = new NodeMapper();
-                return new InclusiveWordsValidator(mapper.deserialize(node, InclusiveWordsValidator.Config.class));
+                return new NoninclusiveTermsValidator(mapper.deserialize(node, NoninclusiveTermsValidator.Config.class));
             });
         }
     }
@@ -58,8 +58,8 @@ public final class InclusiveWordsValidator extends AbstractModelTextValidator {
      * InclusiveWordsValidator validator configuration.
      */
     public static final class Config {
-        private Map<String, List<String>> appendNonInclusiveWords = Collections.emptyMap();
-        private Map<String, List<String>> overrideNonInclusiveWords = Collections.emptyMap();
+        private Map<String, List<String>> appendNonInclusiveWords = MapUtils.of();
+        private Map<String, List<String>> overrideNonInclusiveWords = MapUtils.of();
 
         public Map<String, List<String>> getAppendNonInclusiveWords() {
             return appendNonInclusiveWords;
@@ -80,24 +80,20 @@ public final class InclusiveWordsValidator extends AbstractModelTextValidator {
 
     final Map<String, List<String>> termsMap;
 
-    private InclusiveWordsValidator(Config config) {
+    private NoninclusiveTermsValidator(Config config) {
         termsMap = config.getOverrideNonInclusiveWords() == null || config.getOverrideNonInclusiveWords().isEmpty()
                 ? new HashMap<>(BUILT_IN_NONINCLUSIVE_TERMS)
-                : new HashMap<>(config.getOverrideNonInclusiveWords());
+                : new HashMap<>(config.overrideNonInclusiveWords);
 
-        if (config.getAppendNonInclusiveWords() != null) {
-            for (Map.Entry<String, List<String>> termEntry:config.getAppendNonInclusiveWords().entrySet()) {
-                termsMap.putIfAbsent(termEntry.getKey(), termEntry.getValue());
-            }
-        }
+        termsMap.putAll(config.appendNonInclusiveWords);
     }
 
     @Override
     protected void getValidationEvents(TextOccurrence occurrence,
                                        Consumer<ValidationEvent> validationEventConsumer) {
-        for (Map.Entry<String, List<String>> termEntry: termsMap.entrySet()) {
+        for (Map.Entry<String, List<String>> termEntry : termsMap.entrySet()) {
             //lower casing the term will be more necessary when the terms are from config
-            if (containsTerm(occurrence.text, termEntry.getKey().toLowerCase())) {
+            if (containsTerm(occurrence.text, termEntry.getKey())) {
                 switch (occurrence.locationType) {
                     case NAMESPACE:
                         validationEventConsumer.accept(ValidationEvent.builder()
@@ -110,7 +106,7 @@ public final class InclusiveWordsValidator extends AbstractModelTextValidator {
                     case TRAIT_VALUE:
                     case TRAIT_KEY:
                         validationEventConsumer.accept(warning(occurrence.shape,
-                                occurrence.trait.get().getSourceLocation(),
+                                occurrence.trait.getSourceLocation(),
                                 formatNonInclusiveWordsValidationMessage(termEntry, occurrence)));
                         break;
                     case SHAPE:
@@ -123,7 +119,7 @@ public final class InclusiveWordsValidator extends AbstractModelTextValidator {
     }
 
     private static boolean containsTerm(String text, String term) {
-        return text.toLowerCase().contains(term);
+        return text.toLowerCase().contains(term.toLowerCase());
     }
 
     private static String formatNonInclusiveWordsValidationMessage(Map.Entry<String, List<String>> termEntry,
@@ -143,17 +139,17 @@ public final class InclusiveWordsValidator extends AbstractModelTextValidator {
             case TRAIT_KEY:
                 String keyPropertyPathFormatted = formatPropertyPath(occurrence.traitPropertyPath);
                 return String.format("`%s` trait has key {%s} that uses a non-inclusive word `%s`.%s",
-                        Trait.getIdiomaticTraitName(occurrence.trait.get()), keyPropertyPathFormatted,
+                        Trait.getIdiomaticTraitName(occurrence.trait), keyPropertyPathFormatted,
                         termEntry.getKey(), replacementAddendum);
             case TRAIT_VALUE:
                 String valuePropertyPathFormatted = formatPropertyPath(occurrence.traitPropertyPath);
                 if (occurrence.traitPropertyPath.isEmpty()) {
                     return String.format("'%s' trait has a value that contains a non-inclusive word `%s`.%s",
-                            Trait.getIdiomaticTraitName(occurrence.trait.get()), termEntry.getKey(),
+                            Trait.getIdiomaticTraitName(occurrence.trait), termEntry.getKey(),
                             replacementAddendum);
                 } else {
                     return String.format("'%s' trait value at path {%s} contains a non-inclusive word `%s`.%s",
-                            Trait.getIdiomaticTraitName(occurrence.trait.get()), valuePropertyPathFormatted,
+                            Trait.getIdiomaticTraitName(occurrence.trait), valuePropertyPathFormatted,
                             termEntry.getKey(), replacementAddendum);
                 }
             default:
@@ -162,6 +158,6 @@ public final class InclusiveWordsValidator extends AbstractModelTextValidator {
     }
 
     private static String formatPropertyPath(List<String> propertyPath) {
-        return propertyPath.stream().collect(Collectors.joining(""));
+        return String.join("", propertyPath);
     }
 }
