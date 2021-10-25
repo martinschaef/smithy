@@ -1,6 +1,17 @@
 {
     "smithy": "1.0",
     "shapes": {
+        "ns.foo#MyUnionTrait": {
+            "type": "union",
+            "members": {
+                "int_whitelist": {
+                    "target": "smithy.api#Integer"
+                },
+                "no_violation_string": {
+                    "target": "smithy.api#String"
+                }
+            }
+        },
         "ns.foo#MyWhitelistTrait": {
             "type": "structure",
             "members": {
@@ -15,6 +26,9 @@
                 },
                 "collection": {
                     "target": "ns.foo#ListOfDocs"
+                },
+                "union": {
+                    "target": "ns.foo#MyUnionTrait"
                 }
             },
             "traits": {

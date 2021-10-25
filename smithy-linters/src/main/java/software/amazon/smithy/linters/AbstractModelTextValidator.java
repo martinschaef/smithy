@@ -24,7 +24,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -32,10 +31,8 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.loader.Prelude;
 import software.amazon.smithy.model.node.Node;
 import software.amazon.smithy.model.node.ObjectNode;
-import software.amazon.smithy.model.shapes.CollectionShape;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.Shape;
-import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.traits.ReferencesTrait;
 import software.amazon.smithy.model.traits.Trait;
 import software.amazon.smithy.model.validation.AbstractValidator;
@@ -112,19 +109,15 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
     private static void getTextOccurrences(Shape shape,
                                            Collection<TextOccurrence> textOccurrences,
                                            Model model) {
+        TextOccurrence.Builder builder = TextOccurrence.builder()
+                .locationType(TextLocationType.SHAPE)
+                .shape(shape);
         if (shape.isMemberShape()) {
-            textOccurrences.add(TextOccurrence.builder()
-                    .locationType(TextLocationType.SHAPE)
-                    .shape(shape)
-                    .text(((MemberShape) shape).getMemberName())
-                    .build());
+            builder.text(((MemberShape) shape).getMemberName());
         } else {
-            textOccurrences.add(TextOccurrence.builder()
-                    .locationType(TextLocationType.SHAPE)
-                    .shape(shape)
-                    .text(shape.getId().getName())
-                    .build());
+            builder.text(shape.getId().getName());
         }
+        textOccurrences.add(builder.build());
 
         for (Trait trait : shape.getAllTraits().values()) {
             Shape traitShape = model.expectShape(trait.toShapeId());
@@ -190,15 +183,11 @@ abstract class AbstractModelTextValidator extends AbstractValidator {
 
     private static Shape getChildMemberShapeType(String memberKey, Model model, Shape fromShape) {
         if (fromShape != null) {
-            Shape childShape = null;
-            if (fromShape instanceof StructureShape) {
-                StructureShape structureShape = (StructureShape) fromShape;
-                childShape = model.getShape(structureShape.getMember(memberKey).get().getTarget()).get();
-            } else if (fromShape instanceof CollectionShape) {
-                CollectionShape collectionShape = (CollectionShape) fromShape;
-                childShape = model.getShape(collectionShape.getMember().getTarget()).get();
+            for (MemberShape member : fromShape.members()) {
+                if (member.getMemberName().equals(memberKey)) {
+                    return model.getShape(member.getTarget()).get();
+                }
             }
-            return childShape;
         }
         return null;
     }

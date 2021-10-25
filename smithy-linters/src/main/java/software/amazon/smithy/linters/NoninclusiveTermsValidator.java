@@ -15,12 +15,10 @@
 
 package software.amazon.smithy.linters;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import software.amazon.smithy.model.SourceLocation;
 import software.amazon.smithy.model.node.NodeMapper;
 import software.amazon.smithy.model.traits.Trait;
@@ -49,7 +47,8 @@ public final class NoninclusiveTermsValidator extends AbstractModelTextValidator
         public Provider() {
             super(NoninclusiveTermsValidator.class, node -> {
                 NodeMapper mapper = new NodeMapper();
-                return new NoninclusiveTermsValidator(mapper.deserialize(node, NoninclusiveTermsValidator.Config.class));
+                return new NoninclusiveTermsValidator(
+                        mapper.deserialize(node, NoninclusiveTermsValidator.Config.class));
             });
         }
     }

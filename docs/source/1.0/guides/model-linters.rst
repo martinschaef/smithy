@@ -135,8 +135,8 @@ InclusiveWords
 
 Validates that all text content in a model (i.e. shape names, member names,
 documentation, trait values, etc.) do not contain words that perpetuate cultural
-biases. This validator has a built-in set of bias words that are commonly
-found in APIs along with suggested alternatives.
+biases. This validator has a built-in set of bias words that are commonly found
+in APIs along with suggested alternatives.
 
 Non-inclusive words are case-insensitively substring matched and can have any
 leading or trailing whitespace or non-whitespace characters.
@@ -160,7 +160,7 @@ Configuration
        * - Property
          - Type
          - Description
-           * - appendNonInclusiveWords
+       * - appendNonInclusiveWords
          - { ``keyword`` -> [ ``alternatives`` ] }
          - A set of mappings of non-inclusive words to their suggested
            alternatives to be applied in addition to the validator's built-in
@@ -191,7 +191,7 @@ Example:
         configuration: {
             appendNonInclusiveWords: {
                 mankind: ["humankind"],
-                old: ["legacy", "geriatric"]
+                mailman: ["mail carrier", "postal worker"]
             }
         }
     }]
