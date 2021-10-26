@@ -84,7 +84,7 @@ public final class NoninclusiveTermsValidator extends AbstractModelTextValidator
         if (config.isAppendDefaults()) {
             termsMap = new HashMap<>(BUILT_IN_NONINCLUSIVE_TERMS);
             termsMap.putAll(config.getNonInclusiveTerms());
-        } else if(!config.getNonInclusiveTerms().isEmpty()) {
+        } else if (!config.getNonInclusiveTerms().isEmpty()) {
             termsMap = MapUtils.copyOf(config.getNonInclusiveTerms());
         } else {
             termsMap = new HashMap<>(BUILT_IN_NONINCLUSIVE_TERMS);
@@ -113,7 +113,8 @@ public final class NoninclusiveTermsValidator extends AbstractModelTextValidator
                         break;
                     case SHAPE:
                     default:
-                        validationEventConsumer.accept(warning(instance.getShape(), instance.getShape().getSourceLocation(),
+                        validationEventConsumer.accept(warning(instance.getShape(),
+                                instance.getShape().getSourceLocation(),
                                 formatNonInclusiveTermsValidationMessage(termEntry, instance)));
                 }
             }
