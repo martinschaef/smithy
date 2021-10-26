@@ -1,14 +1,19 @@
-package software.amazon.smithy.model.knowledge;
+/*
+ * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
+ *
+ *  http://aws.amazon.com/apache2.0
+ *
+ * or in the "license" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
 
-import software.amazon.smithy.model.Model;
-import software.amazon.smithy.model.loader.Prelude;
-import software.amazon.smithy.model.node.Node;
-import software.amazon.smithy.model.node.ObjectNode;
-import software.amazon.smithy.model.shapes.MemberShape;
-import software.amazon.smithy.model.shapes.Shape;
-import software.amazon.smithy.model.traits.ReferencesTrait;
-import software.amazon.smithy.model.traits.Trait;
-import software.amazon.smithy.model.validation.validators.TraitValueValidator;
+package software.amazon.smithy.model.knowledge;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -18,6 +23,15 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.loader.Prelude;
+import software.amazon.smithy.model.node.Node;
+import software.amazon.smithy.model.node.ObjectNode;
+import software.amazon.smithy.model.shapes.MemberShape;
+import software.amazon.smithy.model.shapes.Shape;
+import software.amazon.smithy.model.traits.ReferencesTrait;
+import software.amazon.smithy.model.traits.Trait;
+import software.amazon.smithy.model.validation.validators.TraitValueValidator;
 
 public final class TextIndex implements KnowledgeIndex {
     private List<TextInstance> textInstanceList;
@@ -77,14 +91,14 @@ public final class TextIndex implements KnowledgeIndex {
     private static void getTextInstancesForAppliedTrait(Node node,
                                                           Trait trait,
                                                           Shape parentShape,
-                                                          Collection<TextInstance> TextInstances,
+                                                          Collection<TextInstance> textInstances,
                                                           Deque<String> propertyPath,
                                                           Model model,
                                                           Shape currentTraitPropertyShape) {
         if (trait.toShapeId().equals(ReferencesTrait.ID)) {
             //Skip ReferenceTrait because it is referring to other shape names already being checked
         } else if (node.isStringNode()) {
-            TextInstances.add(TextInstance.builder()
+            textInstances.add(TextInstance.builder()
                     .locationType(TextInstance.TextLocation.APPLIED_TRAIT)
                     .shape(parentShape)
                     .trait(trait)
@@ -103,7 +117,7 @@ public final class TextIndex implements KnowledgeIndex {
                 if (memberTypeShape == null) {
                     //This means the "property" key value isn't modeled in the trait's structure/shape definition
                     //and this text instance is unique
-                    TextInstances.add(TextInstance.builder()
+                    textInstances.add(TextInstance.builder()
                             .locationType(TextInstance.TextLocation.APPLIED_TRAIT)
                             .shape(parentShape)
                             .trait(trait)
@@ -111,7 +125,7 @@ public final class TextIndex implements KnowledgeIndex {
                             .traitPropertyPath(propertyPath)
                             .build());
                 }
-                getTextInstancesForAppliedTrait(memberEntry.getValue(), trait, parentShape, TextInstances,
+                getTextInstancesForAppliedTrait(memberEntry.getValue(), trait, parentShape, textInstances,
                         propertyPath, model, memberTypeShape);
                 propertyPath.removeLast();
             });
@@ -121,7 +135,7 @@ public final class TextIndex implements KnowledgeIndex {
                 propertyPath.offerLast("[" + index + "]");
                 Shape memberTypeShape = getChildMemberShapeType(null,
                         model, currentTraitPropertyShape);
-                getTextInstancesForAppliedTrait(nodeElement, trait, parentShape, TextInstances,
+                getTextInstancesForAppliedTrait(nodeElement, trait, parentShape, textInstances,
                         propertyPath, model, memberTypeShape);
                 propertyPath.removeLast();
                 ++index;
