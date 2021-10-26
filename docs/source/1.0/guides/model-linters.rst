@@ -128,18 +128,18 @@ Example:
     ]
 
 
-.. _InclusiveWords:
+.. _NoninclusiveTerms:
 
-InclusiveWords
+NoninclusiveTerms
 ==============
 
 Validates that all text content in a model (i.e. shape names, member names,
 documentation, trait values, etc.) do not contain words that perpetuate cultural
-biases. This validator has a built-in set of bias words that are commonly found
+biases. This validator has a built-in set of bias terms that are commonly found
 in APIs along with suggested alternatives.
 
-Non-inclusive words are case-insensitively substring matched and can have any
-leading or trailing whitespace or non-whitespace characters.
+Noninclusive terms are case-insensitively substring matched and can have any
+number of leading or trailing whitespace or non-whitespace characters.
 
 Rationale
     Intent doesn't always match impact. The use of noninclusive language like
@@ -160,25 +160,17 @@ Configuration
        * - Property
          - Type
          - Description
-       * - appendNonInclusiveWords
+       * - noninclusiveTerms
          - { ``keyword`` -> [ ``alternatives`` ] }
-         - A set of mappings of non-inclusive words to their suggested
-           alternatives to be applied in addition to the validator's built-in
-           mappings. If alternatives is empty, no suggestion is made in the
-           generated warning message.
-       * - overrideNonInclusiveWords
-         - { ``keyword`` -> [ ``alternatives`` ] }
-         - A set of mappings of non-inclusive words to their suggested
-           alternatives to replace the validator's built-in mappings. If
-           alternatives is empty, no suggestion is made in the generated
-           warning message.
-
-.. note::
-
-    If both ``appendNonInclusiveWords`` and ``overrideNonInclusiveWords`` are
-    provided, ``overrideNonInclusiveWords`` is applied first, disabling the
-    built-in filter mappings. Then ``appendNonInclusiveWords`` is applied
-    adding further mappings to search for.
+         - A set of mappings from noninclusive terms to match in the model text
+           to suggested alternatives for those terms to be used by the validator.
+           If a match occurs and alternatives is empty, no suggestion is made in
+           the generated warning message.
+       * - appendDefaults
+         - ``boolean``
+         - If set to true the mappings provided in the configuration should be
+           appended to the validator's builtin term to alternatives mappings.
+           Otherwise, the configured mappings will override the default.
 
 Example:
 
@@ -189,7 +181,8 @@ Example:
     metadata validators = [{
         name: "InclusiveWords"
         configuration: {
-            appendNonInclusiveWords: {
+            appendDefaults: true,
+            noninclusiveTerms: {
                 mankind: ["humankind"],
                 mailman: ["mail carrier", "postal worker"]
             }

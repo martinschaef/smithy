@@ -40,10 +40,7 @@
             "type": "structure"
         },
         "ns.foo#BlackListThings": {
-            "type": "operation",
-            "traits": {
-                "smithy.api#documentation": "Non-inclusive word with no replacement suggestion."
-            }
+            "type": "operation"
         }
     },
     "metadata": {
@@ -51,10 +48,10 @@
             {
                 "name": "NoninclusiveTerms",
                 "configuration": {
-                    "appendNonInclusiveWords": {
+                    "appendDefaults": false,
+                    "noninclusiveTerms": {
                         "apple": ["banana"],
-                        "foo": ["bar"],
-                        "replacement": []
+                        "foo": ["bar"]
                     }
                 }
             }
