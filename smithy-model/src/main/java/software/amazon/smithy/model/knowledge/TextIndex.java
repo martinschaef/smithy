@@ -92,7 +92,7 @@ public final class TextIndex implements KnowledgeIndex {
                                                           Trait trait,
                                                           Shape parentShape,
                                                           Collection<TextInstance> textInstances,
-                                                          Deque<String> propertyPath,
+                                                          Deque<TextInstance.PathElement> propertyPath,
                                                           Model model,
                                                           Shape currentTraitPropertyShape) {
         if (trait.toShapeId().equals(ReferencesTrait.ID)) {
@@ -108,10 +108,7 @@ public final class TextIndex implements KnowledgeIndex {
         } else if (node.isObjectNode()) {
             ObjectNode objectNode = node.expectObjectNode();
             objectNode.getMembers().entrySet().forEach(memberEntry -> {
-                String pathPrefix = propertyPath.isEmpty()
-                        ? ""
-                        : ".";
-                propertyPath.offerLast(pathPrefix + memberEntry.getKey().getValue());
+                propertyPath.offerLast(TextInstance.PathElement.ofKey(memberEntry.getKey().getValue()));
                 Shape memberTypeShape = getChildMemberShapeType(memberEntry.getKey().getValue(),
                         model, currentTraitPropertyShape);
                 if (memberTypeShape == null) {
@@ -132,7 +129,7 @@ public final class TextIndex implements KnowledgeIndex {
         } else if (node.isArrayNode()) {
             int index = 0;
             for (Node nodeElement : node.expectArrayNode().getElements()) {
-                propertyPath.offerLast("[" + index + "]");
+                propertyPath.offerLast(TextInstance.PathElement.ofIndex(index));
                 Shape memberTypeShape = getChildMemberShapeType(null,
                         model, currentTraitPropertyShape);
                 getTextInstancesForAppliedTrait(nodeElement, trait, parentShape, textInstances,

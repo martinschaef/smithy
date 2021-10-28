@@ -17,8 +17,11 @@ package software.amazon.smithy.linters;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import software.amazon.smithy.model.SourceLocation;
 import software.amazon.smithy.model.knowledge.TextInstance;
 import software.amazon.smithy.model.node.NodeMapper;
@@ -140,12 +143,12 @@ public final class NoninclusiveTermsValidator extends AbstractModelTextValidator
                 return String.format("%s namespace uses a non-inclusive term `%s`.%s",
                         instance.getText(), termEntry.getKey(), replacementAddendum);
             case APPLIED_TRAIT:
-                String valuePropertyPathFormatted = formatPropertyPath(instance.getTraitPropertyPath());
                 if (instance.getTraitPropertyPath().isEmpty()) {
                     return String.format("'%s' trait has a value that contains a non-inclusive term `%s`.%s",
                             Trait.getIdiomaticTraitName(instance.getTrait()), termEntry.getKey(),
                             replacementAddendum);
                 } else {
+                    String valuePropertyPathFormatted = formatPropertyPath(instance.getTraitPropertyPath());
                     return String.format("'%s' trait value at path {%s} contains a non-inclusive term `%s`.%s",
                             Trait.getIdiomaticTraitName(instance.getTrait()), valuePropertyPathFormatted,
                             termEntry.getKey(), replacementAddendum);
@@ -155,7 +158,36 @@ public final class NoninclusiveTermsValidator extends AbstractModelTextValidator
         }
     }
 
-    private static String formatPropertyPath(List<String> propertyPath) {
-        return String.join("", propertyPath);
+    /**
+     * The complexity here is necessary to format property path indexes as parentKey[index] instead
+     * of parentKey.[index]. It's subtle, but programmers are quite used to not seeing the dot separator
+     * before an index.  It is not possible to conditionalize the delimiter of a string join, so
+     * this logic has to be written
+     */
+    private static String formatPropertyPath(List<TextInstance.PathElement> propertyPath) {
+        Objects.requireNonNull(propertyPath);
+        Function<TextInstance.PathElement, String> elementToString = pathElement -> {
+            switch (pathElement.getElementType()) {
+                case KEY:
+                    return pathElement.getKey();
+                case ARRAY_INDEX:
+                    return "[" + pathElement.getIndex() + "]";
+                default:
+                    throw new IllegalStateException();
+            }
+        };
+
+        StringBuilder builder = new StringBuilder();
+        ListIterator<TextInstance.PathElement> pathElementIterator = propertyPath.listIterator();
+        while (pathElementIterator.hasNext()) {
+            boolean hasPrevious = pathElementIterator.hasPrevious();
+            TextInstance.PathElement pathElement = pathElementIterator.next();
+            if (hasPrevious && pathElement.getElementType() != TextInstance.PathElementType.ARRAY_INDEX) {
+                builder.append(".");
+            }
+            builder.append(elementToString.apply(pathElement));
+        }
+
+        return builder.toString();
     }
 }
